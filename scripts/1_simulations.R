@@ -11,7 +11,7 @@ source("./scripts/viral_production_Step2.R")
 
 ####1.0 Creating a dataframe####
 # #Set number of dataframes you'd like to create
-simu_length<- 10
+simu_length<- 1000
 {
   
   
@@ -53,8 +53,14 @@ simu_length<- 10
 #Adding additional column to fit vpR
 write.csv(simu_df, file = "data/simulation_df.csv")
 
+simu_df<- read.csv("./data/simulation_df.csv")
 
-cols_to_add<- c("Location", "Depth", 'c_Bacteria', 'c_HNA', 'c_LNA', 'c_V1', 'c_V2', 'c_V3')
+cols_to_add<- c('c_Bacteria', 'c_HNA', 'c_LNA', 'c_V1', 'c_V2', 'c_V3')
+
+for(col in cols_to_add) {
+  simu_df[[col]] <- runif(nrow(simu_df))
+}
+cols_to_add<- c("Location", "Depth")
 
 for(col in cols_to_add) {
   simu_df[[col]] <- 1
@@ -70,8 +76,15 @@ for(col in cols_to_add) {
 calc_VP(data = simu_df,
         output_dir = "results",
         SR_calc = F,
-        bp_endpoint = F)
+        bp_endpoint = F,
+        method = 1)
 
 simu_vp<- read.csv("./results/vp_calc_ALL.csv")
+unique(simu_vp$VP_Type)
 
-simu_vp <- simu_vp %>% filter(Population == 'c_Viruses')
+
+
+simu_vp <- simu_vp %>% filter(Population == 'c_Viruses') %>%
+  mutate(Station_Number = as.numeric(Station_Number))
+
+write.csv(simu_vp, "./results/simu_vp_filtered.csv")
