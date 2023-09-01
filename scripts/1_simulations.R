@@ -1,3 +1,7 @@
+#Aim: To generate simulation dataset to comparatively assess viral production analyses methods.
+
+
+
 #We'll use the viral production being developed on Github for analyses.
 #Input as a simualtion dataframe catered to the simualtion function.
 
@@ -50,8 +54,11 @@ simu_length<- 1000
   }
 }
 
-#Adding additional column to fit vpR
 write.csv(simu_df, file = "data/simulation_df.csv")
+
+
+
+#Adding additional column to fit vpR tool
 
 simu_df<- read.csv("./data/simulation_df.csv")
 
@@ -66,18 +73,13 @@ for(col in cols_to_add) {
   simu_df[[col]] <- 1
 }
 
-#Remeber to remove everything except c_Viruses
-
-
-#Description statistics for the simualted data
 
 #Run simulation
 
 calc_VP(data = simu_df,
         output_dir = "results",
         SR_calc = F,
-        bp_endpoint = F,
-        method = 1)
+        bp_endpoint = F)
 
 simu_vp<- read.csv("./results/vp_calc_ALL.csv")
 unique(simu_vp$VP_Type)
@@ -88,3 +90,4 @@ simu_vp <- simu_vp %>% filter(Population == 'c_Viruses') %>%
   mutate(Station_Number = as.numeric(Station_Number))
 
 write.csv(simu_vp, "./results/simu_vp_filtered.csv")
+
