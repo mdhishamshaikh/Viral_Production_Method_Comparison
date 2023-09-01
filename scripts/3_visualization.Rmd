@@ -1,0 +1,45 @@
+---
+title: "Visualization of Viral Production Method Comparison"
+author: "Hisham M Shaikh"
+date: "2023-08-30"
+output: html_document
+---
+\
+### **Aim**: Visualizing simulation data to assess viral production analyses methods\
+\
+\
+
+##### **Set Up environment **\\
+
+```{r setup, include=FALSE}
+#Set working directory
+knitr::opts_chunk$set(echo = TRUE, root.dir = "C:/Users/hisham.shaikh/OneDrive - UGent/Projects/Viral_Production_Method_Comparison")
+source("./scripts/viral_production_step2.R")
+source("./scripts/3_visualization_source")
+```
+
+
+\
+
+```{r eval=FALSE, include=FALSE}
+
+#Source packages and functions
+#source("/scripts/viral_production_Step2.R")
+#source("./scripts/3_visualization_source")
+
+#Import dataset
+getwd()
+vis_df<- readr::read_csv("./results/simu_vp_filtered.csv")
+vis_df <- vis_df  %>%
+  mutate(Station_Number = as.numeric(Station_Number))
+unique(vis_df$Population)
+unique(vis_df$VP_Type)
+str(vis_df)
+
+```
+
+
+##### **Part 1: Comparing two existing methods: LM_SR_AVG (LM_2) and VPCL_AR_DIFF_LMER_SE (VPCL_7).**\
+
+##### **1.1 Mock plots to compare methodological differences between the two existing methods.**\
+
