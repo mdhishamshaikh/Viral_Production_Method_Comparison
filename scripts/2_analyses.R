@@ -1,6 +1,6 @@
 
 source("./scripts/viral_production_Step2.R")
-
+source("./scripts/3_visualization_source.R")
 
 
 vis_df<- read.csv("results/simu_vp_filtered.csv")
@@ -324,4 +324,59 @@ boxplot(VP ~ as.factor(VP_Type), xlab='VP_Type', ylab='VP', data=vis_df_og)
 #wilcox test #non-normal test
 wilcox.test(VP ~ as.factor(VP_Type), data = vis_df_og)
 #W = 34050432, p-value < 2.2e-16 Significantly different.
+
+#Linear Regression
+
+vis_df_og_lm<- vis_df_og %>%
+  select(-c(abs_VP, VP_SE,
+            VP_R_Squared)) %>%
+  group_by(Location, Station_Number,
+           Depth, Time_Range,
+           Population, Sample_Type) %>%
+  pivot_wider(names_from = VP_Type,
+              values_from = VP) 
+
+#Stats
+
+#Total length of observations
+length(vis_df_og_lm$LM_SR_AVG)
+#15000
+
+#Cases when LM and VPCL are zero
+length(which(vis_df_og_lm$LM_SR_AVG == 0))
+#0 0%
+length(which( vis_df_og_lm$VPCL_AR_DIFF == 0))
+#2056 13.70667%
+
+#Cases when LM and VPCL are less than zero
+length(which(vis_df_og_lm$LM_SR_AVG < 0))
+#7416 49.44%
+length(which( vis_df_og_lm$VPCL_AR_DIFF < 0))
+#0 0%
+
+
+#Cases where LM is higher than VPCL
+length(which(vis_df_og_lm$LM_SR_AVG > vis_df_og_lm$VPCL_AR_DIFF))
+#511 3.406667%
+
+#Cases when VPCL is higher than LM
+length(which(vis_df_og_lm$LM_SR_AVG < vis_df_og_lm$VPCL_AR_DIFF))
+#13243 88.28667%
+
+#Cases when VPCL is equal to LM
+length(which(vis_df_og_lm$LM_SR_AVG ==vis_df_og_lm$VPCL_AR_DIFF))
+#1246 8.306667%
+
+
+
+ggplot(data = vis_df_og_lm,
+       aes(x = LM_SR_AVG,
+           y = VPCL_AR_DIFF,
+           col = Sample_Type))+
+  geom_point(alpha = 0.1)+
+  scale_color_manual(values = cols)+
+  theme_bw()+
+  geom_abline(slope = 1)+
+  geom_smooth(method = 'lm')
+  
 

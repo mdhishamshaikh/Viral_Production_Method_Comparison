@@ -59,7 +59,7 @@ df3$Sample_Type<- factor(df3$Sample_Type, levels = c('VP', 'VPC', 'Diff'))
 
 cols<- c("VP" = '#e8384fff',
          "VPC" = '#4178bcff',
-         "Diff" = '#edb81dff')
+         "Diff" = '#ebb81cff')
 shape<- c("VP" = 15,
           "VPC" = 17,
           "Diff" = 19)
@@ -229,6 +229,36 @@ for (i in 1:6){
  
 }
 
-#### Literature Study
 
+# Add the Y-axis titles
+titles <- ggdraw() + 
+  draw_label("Linear Regression", x = 0.1, y = 0.8, hjust = 0, vjust = 0.5, fontface = 'bold') + 
+  draw_label("VIPCAL", x = 0.1, y = 0.3, hjust = 0, vjust = 0.5, fontface = 'bold') + 
+  theme(plot.margin = margin(0, 0, 0, 7 * 1.2),  # Adjust the margin to make it more centered
+        plot.background = element_rect(fill = "white"))
+
+# For top titles (VP, VPC, and Diff)
+vp_label <- ggdraw() + 
+  draw_label("VP", x = 0.2, y = 0.5, fontface = 'bold') + 
+  theme(plot.margin = margin(0, 3.8 * 1.2, 0, 0),  # Adjust the margin to make it centered
+        plot.background = element_rect(fill = "white"))
+
+vpc_label <- ggdraw() + 
+  draw_label("VPC", x = 0.5, y = 0.5, fontface = 'bold') + 
+  theme(plot.background = element_rect(fill = "white"))
+
+diff_label <- ggdraw() + 
+  draw_label("Diff", x = 0.8, y = 0.5, fontface = 'bold') + 
+  theme(plot.margin = margin(0, 0, 0, 3.8 * 1.2),  # Adjust the margin to make it centered
+        plot.background = element_rect(fill = "white"))
+
+# Combine everything
+plot_grid(vp_label, lm_1, vpcl_1, 
+          ncol = 1,
+          axis = "tblr")
+
+full_plot <- plot_grid(NULL, titles, lm_1, lm_2, lm_3, vp_label, vpc_label, diff_label,  vpcl_1, vpcl_2, vpcl_3, 
+                       ncol = 3, align = 'v', axis = 'l', rel_widths = c(1, 4, 4, 4))
+
+print(full_plot)
 
