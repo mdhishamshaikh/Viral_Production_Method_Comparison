@@ -1,9 +1,6 @@
 library(tidyverse)
 library(ggstatsplot)
 library(ggsci)
-library(ggstatsplot)
-library(cowplot)
-
 library(cowplot)
 library(ggplot2)
 

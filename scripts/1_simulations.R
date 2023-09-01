@@ -89,5 +89,5 @@ unique(simu_vp$VP_Type)
 simu_vp <- simu_vp %>% filter(Population == 'c_Viruses') %>%
   mutate(Station_Number = as.numeric(Station_Number))
 
-write.csv(simu_vp, "./results/simu_vp_filtered.csv")
+write.csv(simu_vp, "./results/simu_vp_filtered.csv", row.names = F)
 
