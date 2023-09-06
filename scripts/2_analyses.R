@@ -80,9 +80,12 @@ library(ggsci)
 cols<- c("VP" = '#e8384fff',
          "VPC" = '#4178bcff',
          "Diff" = '#ebb81cff')
-shape<- c("VP" = 15,
+shapes<- c("VP" = 15,
           "VPC" = 17,
           "Diff" = 19)
+# shapes<- c("VP" = 22,
+#            "VPC" = 24,
+#            "Diff" = 23)
 
 #linear background plot with VP and VPC
 bp<- ggplot(data = df, aes(x = as.factor(Timepoint), y = Count, color = Sample_Type, fill = Sample_Type, shape = Sample_Type))+
@@ -322,12 +325,12 @@ ggplot(vis_df_og, aes(sample = VP)) +
 boxplot(VP ~ as.factor(VP_Type), xlab='VP_Type', ylab='VP', data=vis_df_og)
 
 #wilcox test #non-normal test
-wilcox.test(VP ~ as.factor(VP_Type), data = vis_df_og)
+wilcox.test(VP ~ as.factor(VP_Type), data = vis_df_og %>% filter(Time_Range != 'T1_T2'))
 #W = 34050432, p-value < 2.2e-16 Significantly different.
 
 #Linear Regression
 
-vis_df_og_lm<- vis_df_og %>%
+vis_df_og_lm<- vis_df_og  %>%
   select(-c(abs_VP, VP_SE,
             VP_R_Squared)) %>%
   group_by(Location, Station_Number,
@@ -355,7 +358,7 @@ length(which( vis_df_og_lm$VPCL_AR_DIFF < 0))
 #0 0%
 
 
-#Cases where LM is higher than VPCL
+#Cases where VPCL is lesser than LM
 length(which(vis_df_og_lm$LM_SR_AVG > vis_df_og_lm$VPCL_AR_DIFF))
 #511 3.406667%
 
@@ -367,16 +370,155 @@ length(which(vis_df_og_lm$LM_SR_AVG < vis_df_og_lm$VPCL_AR_DIFF))
 length(which(vis_df_og_lm$LM_SR_AVG ==vis_df_og_lm$VPCL_AR_DIFF))
 #1246 8.306667%
 
+vis_df_og_lm$Sample_Type <- factor(vis_df_og_lm$Sample_Type,
+                                   levels = c("VP", "VPC", "Diff"))
 
 
-ggplot(data = vis_df_og_lm,
+
+ggplot(data = vis_df_og_lm %>% arrange((Sample_Type)),
        aes(x = LM_SR_AVG,
            y = VPCL_AR_DIFF,
-           col = Sample_Type))+
+           col = Sample_Type,
+           shape = Sample_Type))+
   geom_point(alpha = 0.1)+
+  #geom_smooth(method = 'lm')+
   scale_color_manual(values = cols)+
+  scale_shape_manual(values = shapes)+
   theme_bw()+
-  geom_abline(slope = 1)+
-  geom_smooth(method = 'lm')
-  
+  #geom_abline(slope = 1)+
+  xlab("Linear Regression (LM-3)")+
+  ylab("VIPCAL (VPCL-4)")+
+  theme(strip.background = element_rect(fill = lighten("#323d5e",
+                                                       amount = 0.0) ,
+                                        color = NA),
+        strip.text = element_text(face = 'bold',
+                                  color = 'white',
+                                  size = 10),
+        panel.border = element_rect(linewidth = 2),
+        panel.background = element_rect(fill = NA),
+        #legend.position = c(0.75, 0.1),
+        legend.title = element_text(face = 'bold',
+                                    size = 10),
+        legend.text = element_text(size = 9),
+        axis.title = element_text(face = 'bold',
+                                  size = 10),
+        axis.text = element_text(size = 10),
+        panel.grid = element_blank() )+
+  #facet_grid(Time_Range ~ Sample_Type)
+  facet_wrap(vars(Time_Range),
+             nrow = 1)
 
+
+#Dataframe for linear vs VIP[CAL comparison
+
+df_lm_vpcl<- vis_df_og_lm %>%
+  filter(Time_Range != 'T1_T2')
+
+annotations <-  df_lm_vpcl %>%
+  group_by(!!sym("Sample_Type")) %>%
+  do(model = lm(as.formula(paste("VPCL_AR_DIFF", "~", "LM_SR_AVG")), data = .)) %>%
+  rowwise() %>%
+  mutate(
+    intercept = coef(model)[1],
+    slope = coef(model)[2],
+    r2 = summary(model)$r.squared,
+    eq1 = sprintf("y == %.2f*x + %.2f", slope, intercept), 
+    eq2 = sprintf("R^2 == %.2f", r2),
+    eq_x = min(vis_df_og_lm$LM_SR_AVG), 
+    eq_y1 = max(vis_df_og_lm$VPCL_AR_DIFF), # y position for the first equation
+    eq_y2 = max(vis_df_og_lm$VPCL_AR_DIFF) - 0.5  # slightly lower y position for the second equation
+  ) %>%
+  select(!!sym("Sample_Type"), eq1, eq2, eq_x, eq_y1, eq_y2)
+
+
+
+lm_vs_vpcl<- ggplot(data = df_lm_vpcl,
+       aes(x = LM_SR_AVG,
+           y = VPCL_AR_DIFF,
+           col = Sample_Type,
+           shape = Sample_Type))+
+  geom_point(alpha = 0.05)+
+  geom_smooth(method = 'lm', se = T)+
+  #annotate("text", x = eq_x, y = eq_y, label = eq, hjust = 0, vjust = 1) +
+  scale_fill_manual(values = colorspace::lighten(cols, 0.2))+
+  scale_colour_manual(values = cols,
+                      breaks = c('VP', 'VPC', 'Diff'),
+                      name= 'Treatment') +
+  scale_shape_manual(values = shapes,
+                     breaks = c('VP', 'VPC', 'Diff'),
+                     name= 'Treatment')+
+  theme_bw()+
+  #geom_abline(slope = 1)+
+  xlab("Linear Regression (LM-3)")+
+  ylab("VIPCAL (VPCL-4)")+
+  theme(strip.background = element_rect(fill = lighten("#323d5e",
+                                                       amount = 0.0) ,
+                                        color = NA),
+        strip.text = element_text(face = 'bold',
+                                  color = 'white',
+                                  size = 10),
+        panel.border = element_rect(linewidth = 2),
+        panel.background = element_blank(),
+        #legend.position = c(0.75, 0.1),
+        legend.title = element_text(face = 'bold',
+                                    size = 10),
+        legend.text = element_text(size = 9),
+        axis.title = element_text(face = 'bold',
+                                  size = 10),
+        axis.text = element_text(size = 10),
+        panel.grid = element_blank())+
+  coord_fixed(ratio = 1)+
+  facet_wrap(vars(Sample_Type),
+             nrow = 1) +
+  geom_text(data = annotations, aes(x = eq_x, y = eq_y1, label = eq1),
+            hjust = 0, vjust = 1, parse = TRUE, inherit.aes = FALSE) +
+  geom_text(data = annotations, aes(x = eq_x, y = eq_y2, label = eq2),
+            hjust = 0, vjust = 1, parse = TRUE, inherit.aes = FALSE)
+lm_vs_vpcl
+
+ggsave(filename = "1_LM_VS_VPCL_Regression.svg",
+       plot = lm_vs_vpcl,
+       dpi = 100,
+       width = 150 ,
+       unit = 'mm' )
+
+
+#### 12 Methods Violin plot ####
+
+
+vis_df<- read.csv("results/simu_vp_filtered.csv")
+vis_df <- vis_df  %>%
+  mutate(Station_Number = as.numeric(Station_Number),
+         VP_Type = factor(VP_Type,
+                          levels = c("LM_AP", "LM_SR_AVG",
+                                     "LM_AR", "LM_AR_DIFF",
+                                     "LM_AR_DIFF_LMER", "VPCL_SR_AVG",
+                                     "VPCL_AR", "VPCL_AR_SE",
+                                     "VPCL_AR_DIFF", "VPCL_AR_DIFF_SE",
+                                     "VPCL_AR_DIFF_LMER", "VPCL_AR_DIFF_LMER_SE"),
+                          labels = c("LM-1", "LM-2", "LM-3", "LM-4", "LM-5",
+                                     "VPCL-1", "VPCL-2", "VPCL-3", "VPCL-4", "VPCL-5", "VPCL-6", "VPCL-7")))
+str(vis_df)
+unique(vis_df$Population)
+unique(vis_df$VP_Type)
+
+
+ggplot(data = vis_df,
+       aes(x = VP_Type,
+           y = VP,
+           fill = VP_Type)) +
+  geom_violin()+
+  scale_fill_manual(values = c("#e19c33", "#ff9c00", "#ba4a2e", "#4787a1",
+                               "#423a66", "#514759", "#3f5428", "#971e28",
+                               "#85b0a3", "#de5168", "#e87d7f", "#514759"))+
+  geom_boxplot(width = 0.05,
+               outlier.shape = 16, 
+               outlier.alpha = 0.005,
+               fill = "white")+
+  
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        panel.background = element_blank(),
+        axis.text.x = element_text(angle = 90,
+                                   vjust = 0.5,
+                                   hjust = 1))
