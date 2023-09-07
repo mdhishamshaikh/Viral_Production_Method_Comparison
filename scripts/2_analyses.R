@@ -1,6 +1,88 @@
 
 source("./scripts/viral_production_Step2.R")
 source("./scripts/3_visualization_source.R")
+####Geom Split Violin function####
+{
+  GeomSplitViolin <- ggplot2::ggproto(
+    "GeomSplitViolin",
+    ggplot2::GeomViolin,
+    draw_group = function(self,
+                          data,
+                          ...,
+                          # add the nudge here
+                          nudge = 0,
+                          draw_quantiles = NULL) {
+      data <- transform(data,
+                        xminv = x - violinwidth * (x - xmin),
+                        xmaxv = x + violinwidth * (xmax - x))
+      grp <- data[1, "group"]
+      newdata <- plyr::arrange(transform(data,
+                                         x = if (grp %% 2 == 1) xminv else xmaxv),
+                               if (grp %% 2 == 1) y else -y)
+      newdata <- rbind(newdata[1, ],
+                       newdata,
+                       newdata[nrow(newdata), ],
+                       newdata[1, ])
+      newdata[c(1, nrow(newdata)-1, nrow(newdata)), "x"] <- round(newdata[1, "x"])
+      
+      # now nudge them apart
+      newdata$x <- ifelse(newdata$group %% 2 == 1,
+                          newdata$x - nudge,
+                          newdata$x + nudge)
+      
+      if (length(draw_quantiles) > 0 & !scales::zero_range(range(data$y))) {
+        
+        stopifnot(all(draw_quantiles >= 0), all(draw_quantiles <= 1))
+        
+        quantiles <- ggplot2:::create_quantile_segment_frame(data,
+                                                             draw_quantiles)
+        aesthetics <- data[rep(1, nrow(quantiles)),
+                           setdiff(names(data), c("x", "y")),
+                           drop = FALSE]
+        aesthetics$alpha <- rep(1, nrow(quantiles))
+        both <- cbind(quantiles, aesthetics)
+        quantile_grob <- ggplot2::GeomPath$draw_panel(both, ...)
+        ggplot2:::ggname("geom_split_violin",
+                         grid::grobTree(ggplot2::GeomPolygon$draw_panel(newdata, ...),
+                                        quantile_grob))
+      }
+      else {
+        ggplot2:::ggname("geom_split_violin",
+                         ggplot2::GeomPolygon$draw_panel(newdata, ...))
+      }
+    }
+  )
+  geom_split_violin <- function(mapping = NULL,
+                                data = NULL,
+                                stat = "ydensity",
+                                position = "identity",
+                                # nudge param here
+                                nudge = 0,
+                                ...,
+                                draw_quantiles = NULL,
+                                trim = TRUE,
+                                scale = "area",
+                                na.rm = FALSE,
+                                show.legend = NA,
+                                inherit.aes = TRUE) {
+    
+    ggplot2::layer(data = data,
+                   mapping = mapping,
+                   stat = stat,
+                   geom = GeomSplitViolin,
+                   position = position,
+                   show.legend = show.legend,
+                   inherit.aes = inherit.aes,
+                   params = list(trim = trim,
+                                 scale = scale,
+                                 # don't forget the nudge
+                                 nudge = nudge,
+                                 draw_quantiles = draw_quantiles,
+                                 na.rm = na.rm,
+                                 ...))
+  }
+  
+}
 
 
 vis_df<- read.csv("results/simu_vp_filtered.csv")
@@ -115,7 +197,8 @@ theme_mockplots<- theme(legend.position = 'none',
                         panel.background = element_rect(fill = NA),
                         axis.text = element_text(size = 10, 
                                                  face = 'bold'),
-                        axis.title = element_blank())
+                        axis.title = element_blank(),
+                        panel.grid = element_blank())
 
 #lm - vp
 
@@ -171,7 +254,7 @@ vpcl_1<-ggplot(data = df %>% filter(Sample_Type == 'VP'), aes(x = as.factor(Time
   geom_point(alpha = 0.2,
              size =2.0,
              position = position_jitter(width = 0.1))+
-  scale_shape_manual(values = shape)+
+  scale_shape_manual(values = shapes)+
   theme_bw()+
   xlab("Timepoints")+
   ylab("Viral Counts")+
@@ -191,7 +274,7 @@ vpcl_2<-ggplot(data = df %>% filter(Sample_Type == 'VPC'), aes(x = as.factor(Tim
   geom_point(alpha = 0.2,
              size = 2.0,
              position = position_jitter(width = 0.1))+
-  scale_shape_manual(values = shape)+
+  scale_shape_manual(values = shapes)+
   theme_bw()+
   xlab("Timepoints")+
   ylab("Viral Counts")+
@@ -211,7 +294,7 @@ vpcl_3<- ggplot(data = df, aes(x = as.factor(Timepoint), y = Count, color = Samp
   geom_point(alpha = 0.2,
              size = 2.0,
              position = position_jitter(width = 0.1))+
-  scale_shape_manual(values = shape)+
+  scale_shape_manual(values = shapes)+
   theme_bw()+
   xlab("Timepoints")+
   ylab("Viral Counts")+
@@ -228,12 +311,19 @@ vpcl_3<- ggplot(data = df, aes(x = as.factor(Timepoint), y = Count, color = Samp
             aes(y = mean, group = Sample_Type),alpha = 1, size = 0.5)
 
 
-plot_grid(lm_1, lm_2, lm_3,
+mockplots_og<- plot_grid(lm_1, lm_2, lm_3,
           vpcl_1, vpcl_2, vpcl_3,
           nrow = 2) #PLOT: LM VS VIPCAL MOCKPLOTS
 
 
+mockplots_og
 
+ggsave(filename = "mockplots_og.svg",
+       plot = mockplots_og,
+       dpi = 1000,
+       width = 150 ,
+       height = 100,
+       unit = 'mm' )
 
 og_plots_list<- list(lm_1, vpcl_1, lm_2, vpcl_2, lm_3, vpcl_3)
 og_plots_list_name<- c('LM_1', 'VPCL_1',
@@ -478,7 +568,7 @@ lm_vs_vpcl
 
 ggsave(filename = "1_LM_VS_VPCL_Regression.svg",
        plot = lm_vs_vpcl,
-       dpi = 100,
+       dpi = 1000,
        width = 150 ,
        unit = 'mm' )
 
@@ -503,7 +593,8 @@ unique(vis_df$Population)
 unique(vis_df$VP_Type)
 
 
-ggplot(data = vis_df,
+method12<- ggplot(data = vis_df %>%
+                    filter(Time_Range != "T1_T2"),
        aes(x = VP_Type,
            y = VP,
            fill = VP_Type)) +
@@ -512,13 +603,204 @@ ggplot(data = vis_df,
                                "#423a66", "#514759", "#3f5428", "#971e28",
                                "#85b0a3", "#de5168", "#e87d7f", "#514759"))+
   geom_boxplot(width = 0.05,
-               outlier.shape = 16, 
-               outlier.alpha = 0.005,
+               outlier.shape = NA, 
+               outlier.alpha = 0.00,
                fill = "white")+
-  
+  xlab("Viral Production Analyses Methods")+
+  ylab("Viral Production Rate")+
   theme_bw() +
   theme(panel.grid = element_blank(),
         panel.background = element_blank(),
         axis.text.x = element_text(angle = 90,
                                    vjust = 0.5,
-                                   hjust = 1))
+                                   hjust = 1),
+        panel.border = element_rect(linewidth = 2),
+        #legend.position = c(0.75, 0.1),
+        legend.title = element_text(face = 'bold',
+                                    size = 10),
+        legend.text = element_text(size = 9),
+        axis.title = element_text(face = 'bold',
+                                  size = 10),
+        axis.text = element_text(size = 10,
+                                 face = 'bold'),
+        legend.position = 'none')
+
+method12
+
+ggsave(filename = "12_methods.svg",
+       plot = method12,
+       dpi = 1000,
+       width = 250 ,
+       height = 125,
+       unit = 'mm' )
+
+
+
+#Perfeom Kruskal Wallis test between VIPCAL and VIPCAL-SE for VP, VPC and Diff 
+v_df <- vis_df %>%
+  filter(Time_Range != "T1_T2")
+
+kruskal.test(VP ~ VP_Type, data = v_df)
+
+library(FSA)
+dunn_test<- dunnTest(VP ~ VP_Type, data = v_df,
+                     method = 'holm')
+dunn_output<- as.data.frame(as.list(dunn_test)[[2]])
+
+dunn2<- dunn_output
+
+colnames(dunn2)
+
+
+
+dunn2<- dunn2 %>% separate(Comparison, c("Comp1", "Comp2"), " - ")
+
+
+
+dunn2<- dunn2 %>%
+  arrange(Comp1, Comp2)
+
+corr_p_plot<- ggplot(data = dunn2 , aes(x = Comp1, y = Comp2, fill = P.adj, color = P.adj))+
+  geom_tile()+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = 90,
+                                   vjust = 0.5,
+                                   hjust = 1),
+        axis.text = element_text(size = 10,
+                                 face = 'bold'),
+        axis.title = element_blank(),
+        legend.position = c(0.8, 0.3),
+        legend.title = element_text(size = 8,
+                                    face = 'bold'),
+        legend.text = element_text(size = 8),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth=2),
+        panel.grid = element_blank())+
+  labs(fill = 'P(adjusted)',
+       color = 'P(adjusted)')+
+  scale_fill_gradient(high = '#ea7e82ff', low = '#52495aff')+
+  scale_color_gradient(high = '#ea7e82ff', low = '#52495aff')+
+  coord_fixed(ratio = 1)
+
+corr_p_plot
+
+ggsave(filename = "corr_p_plot.svg",
+       plot = corr_p_plot,
+       dpi = 1000,
+       width = 125 ,
+       height = 125,
+       unit = 'mm' )
+
+
+####VIPCAL vs VIPCAL-SE####
+
+vpcl_df<- vis_df %>% 
+  filter(VP_Type %in% c("VPCL-4",
+                        "VPCL-7")) %>%
+  mutate(Sample_Type = factor(Sample_Type, levels = c("VP", "VPC", "Diff"))) %>%
+  filter(Time_Range != "T1_T2")
+
+#Split Violin
+vpcl_vs <- ggplot(data = vpcl_df,
+       aes(x = Sample_Type,
+           y = VP,
+           fill = VP_Type)) +
+  geom_split_violin(nudge = 0.025,
+                    colour = NA)+
+  scale_fill_manual(values = c("#de5168", "#514759"),
+                    name = "Viral Production\nData Analyses Methods")+
+  xlab("Treatments")+
+  ylab("Viral Production Rates (per L per h)")+
+  theme_bw()+
+  theme(panel.border = element_rect(linewidth = 2),
+        panel.background = element_blank(),
+        legend.position = "top",
+        legend.title = element_text(face = 'bold',
+                                    size = 8),
+        legend.text = element_text(size = 7),
+        axis.title = element_text(face = 'bold',
+                                  size = 10),
+        axis.text = element_text(size = 10),
+        panel.grid = element_blank())
+
+vpcl_vs
+
+ggsave(filename = "vpcl_vs.svg",
+       plot = vpcl_vs,
+       dpi = 1000,
+       width = 100,
+       height = 120,
+       unit = 'mm' )
+
+#Linear Regression
+
+
+
+#Perfeom Kruskal Wallis test between VIPCAL and VIPCAL-SE for VP, VPC and Diff 
+v_df <- make_a_csv
+v_df$VP_Type<- factor(v_df$VP_Type, levels = c('LM_AP', 'LM_SR_AVG',
+                                             'LM_AR', 'LM_AR_Diff',
+                                             'LM_AR_Diff_LMER', "VPCL_SR_AVG" ,
+                                             "VPCL_AR_No_SE" , "VPCL_AR_SE" ,
+                                             "VPCL_AR_Diff_No_SE" ,
+                                             "VPCL_AR_Diff_SE"  ,
+                                             "VPCL_AR_Diff_LMER_No_SE", "VPCL_AR_Diff_LMER_SE"
+),
+labels = c('LM-1', 'LM-2', 'LM-3', 'LM-4', 'LM-5',
+           'VPCL-1', 'VPCL-2', 'VPCL-3',
+           'VPCL-4', 'VPCL-5', 'VPCL-6',
+           'VPCL-7'))
+
+
+kruskal.test(VP ~ VP_Type, data = v_df)
+
+library(FSA)
+dunn_test<- dunnTest(VP ~ VP_Type, data = v_df,
+         method = 'holm')
+dunn_output<- as.data.frame(as.list(dunn_test)[[2]])
+
+dunn2<- dunn_output
+
+colnames(dunn2)
+
+
+
+dunn2<- dunn2 %>% separate(Comparison, c("Comp1", "Comp2"), " - ")
+
+
+
+dunn2<- dunn2 %>%
+  arrange(Comp1, Comp2)
+
+corr_p_plot<- ggplot(data = dunn2 , aes(x = Comp1, y = Comp2, fill = P.adj, color = P.adj))+
+  geom_tile()+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = 90),
+        axis.text = element_text(size = 10,
+                                 face = 'bold'),
+        axis.title = element_blank(),
+        legend.position = c(0.8, 0.3),
+        legend.title = element_text(size = 8,
+                                    face = 'bold'),
+        legend.text = element_text(size = 8),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth=2),
+        panel.grid = element_blank())+
+  labs(fill = 'P(adjusted)',
+       color = 'P(adjusted)')+
+  scale_fill_gradient(high = '#ea7e82ff', low = '#52495aff')+
+  scale_color_gradient(high = '#ea7e82ff', low = '#52495aff')
+
+corr_p_plot
+
+
+
+dunn2<- dunn2 %>%
+  select(-c(Z, P.unadj)) %>%
+  pivot_wider(names_from = Comp2,
+              values_from = P.adj) %>%
+  column_to_rownames(var = 'Comp1')%>%
+  as.matrix()
+
+ggcorrplot::ggcorrplot(dunn2)
+
+
+
