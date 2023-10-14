@@ -733,7 +733,50 @@ ggsave(filename = "vpcl_vs.svg",
 
 #Linear Regression
 
+vpcl_df_lm<- vpcl_df %>%
+  select(-c( "abs_VP", "VP_SE", "VP_R_Squared")) %>%
+  pivot_wider(names_from = VP_Type,
+              values_from = VP) %>%
+  mutate(Sample_Type = factor(Sample_Type,
+                              levels = c("VP", "VPC", "Diff")))
 
+vpcl_lm_plot<- ggplot(data = vpcl_df_lm,
+       aes(x = `VPCL-4`,
+           y = `VPCL-7`,
+           color = Sample_Type,
+           shape = Sample_Type))+
+  geom_point(alpha = 0.1)+
+  scale_color_manual(values = cols,
+                     name = "Treatment")+
+  scale_shape_manual(values = shapes,
+                     name = "Treatment")+
+  geom_smooth(method = 'lm',
+              alpha =  0.2)+
+  geom_abline(slope = 1, linewidth = 1) + 
+  xlab("VIPCAL (VPCL-4)")+
+  ylab("VIPCAL-SE (VPCL-7)")+
+  theme_bw()+
+  theme(panel.border = element_rect(linewidth = 2),
+        panel.background = element_blank(),
+        legend.position = c(0.9,0.2),
+        legend.title = element_text(face = 'bold',
+                                    size = 8),
+        legend.text = element_text(size = 7),
+        axis.title = element_text(face = 'bold',
+                                  size = 10),
+        axis.text = element_text(size = 10),
+        panel.grid = element_blank())+
+  coord_fixed(ratio = 0.9)
+
+vpcl_lm_plot
+
+
+ggsave(filename = "vpcl_lm_plot.svg",
+       plot = vpcl_lm_plot,
+       dpi = 1000,
+       width = 100,
+       height = 100,
+       unit = 'mm' )
 
 #Perfeom Kruskal Wallis test between VIPCAL and VIPCAL-SE for VP, VPC and Diff 
 v_df <- make_a_csv

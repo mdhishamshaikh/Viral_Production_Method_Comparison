@@ -4,7 +4,7 @@ library(cowplot)
 library(colorspace)
 
 
-cr_df<- read.csv("NJ2020.csv")
+cr_df<- cr_df <- read.csv("C:/Users/hisham.shaikh/OneDrive - UGent/Projects/FCM_R/ViralProduction_R/NJ2020.csv")
 
 
 
@@ -117,7 +117,8 @@ shapes<- c("VP" = 15,
 
 
 # Now let's overlap bacterial production values here
-bep_df <- read_csv("./V5000/vp_calc_bp.csv") 
+bep_df <- read.csv("C:/Users/hisham.shaikh/OneDrive - UGent/Projects/FCM_R/ViralProduction_R/V5000/vp_calc_bp.csv")
+
 bep_df <- bep_df %>%
   select(Location, Expt_No,  Time_Range) %>%
   unique() %>%
@@ -180,7 +181,8 @@ cr_plot1
  
 legend1<- ggpubr::as_ggplot( ggpubr::get_legend(cr_plot1))
 
-cr_plot<- cr_plot1 +theme(legend.position = 'none')
+cr_plot<- cr_plot1 +theme(legend.position = 'none',
+                          panel.grid = element_blank())
 
 cr_plot2<- ggplot()+
   geom_vline(data = bep_df,
