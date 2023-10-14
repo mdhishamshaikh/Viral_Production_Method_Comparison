@@ -5,7 +5,7 @@ library(ggpubr)
 library(cowplot)
 library(UpSetR)
 
-ls_df <- read_excel("data/VP_Assay_Literature_Survey.xlsx", sheet = "Sheet2")
+ls_df <- read_excel("data/VP_Assay_WoS_Literature_Survey.xlsx", sheet = "ls_data")
 ls_df<- ls_df %>% 
   select(Year_Published,
          Lytic, Lysogenic,
@@ -143,3 +143,48 @@ upset(
 #Authors vs data analyses type
 
 #Importing data
+
+ls_df <- read_excel("data/VP_Assay_WoS_Literature_Survey.xlsx", sheet = "ls_data")
+ls_df$doi <- tolower(ls_df$doi) 
+
+wos_df<- read_excel("data/VP_Assay_WoS_Literature_Survey.xlsx", sheet = "wos_metadata")
+wos_df$DOI...52 <- tolower(wos_df$DOI...52) #Some here might be capitalized
+
+#I will combine the author records from wos_df to ls_df based on doi
+
+comb_df<- full_join(ls_df, wos_df,by = c('doi' = 'DOI...52'))
+
+#Extracting the necessary columns
+comb_df <- comb_df %>% 
+  select(Year_Published,doi, 'Author Full Names',
+         Lytic, Lysogenic,
+         LM, VIPCAL) %>%
+  mutate_at(vars(Lytic, Lysogenic, LM, VIPCAL), ~ifelse(. > 1, 1, .)) %>% #as we are examining number of studies and not assays
+  arrange(Year_Published) %>%
+  separate_rows(`Author Full Names`, sep = "; ") %>%
+  mutate(Author_Last_Name = word(`Author Full Names`, 1, sep = ", ")) %>%
+  select(Year_Published, doi, Author_Last_Name, Lytic, Lysogenic, LM, VIPCAL)
+
+
+authors_df_sum<- comb_df %>% 
+  group_by(Author_Last_Name) %>%
+  summarize(
+    Lytic = sum(Lytic),
+    Lysogenic = sum(Lysogenic),
+    LM = sum(LM),
+    VIPCAL = sum(VIPCAL)
+  )
+
+unique_authors <- unique(comb_df$Author_Last_Name)
+author_colors <- rainbow(length(unique_authors))  # This will generate a spectrum of colors. Adjust as needed.
+names(author_colors) <- unique_authors
+
+upset(
+  comb_df, 
+  sets = c("LM", "VIPCAL", "Lytic", "Lysogenic"), 
+  sets.bar.color = "#56B4E9",
+  matrix.color = "#D55E00",
+  keep.order = TRUE,
+  order.by = "freq"
+) + scale_fill_manual(values = author_colors)
+
