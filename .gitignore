@@ -16,3 +16,5 @@
 !/results/004_bacterial_production_endpoint/Ba_vs_Vi/data/raw_data/.gitkeep
 /results/004_bacterial_production_endpoint/NJ2020/data/raw_data/*
 !/results/004_bacterial_production_endpoint/NJ2020/data/raw_data/.gitkeep
+/results/004_bacterial_production_endpoint/NJ2020_abundance/data/raw_data/*
+!/results/004_bacterial_production_endpoint/NJ2020_abundance/data/raw_data/.gitkeep
