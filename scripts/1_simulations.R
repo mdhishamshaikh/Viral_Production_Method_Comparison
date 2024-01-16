@@ -33,12 +33,19 @@ simu_length<- 1000
     A$SD_percent<- runif(n = 12, min = 0, max = 100) #UP TO 100% ERROR
     A$SD<- (A$Count*A$SD_percent)/100
     
-   
+   #Incorporate this in simulation dataset generation. 
+    # generate_positive_numbers <- function(mean_val, std_dev) {
+    #   +     while(TRUE) {
+    #     +         numbers <- rnorm(3, mean = mean_val, sd = std_dev)
+    #     +         if(all(numbers > 0)) return(numbers)
+    #     +     }
+    
     B<- apply(A, 1, function(x){x[1]+x[4]*abs(scale(rnorm(3)))} )
     B<- as.data.frame(B)
     colnames(B)<- rep(1:6,2)
     B<- B%>% pivot_longer(cols = everything(), names_to = 'Timepoint',
-                          values_to = 'c_Viruses')
+                          values_to = 'c_Viruses') %>%
+      mutate(c_Viruses = as.numeric(c_Viruses))
     B<- B%>%
       arrange(Timepoint) %>%
       mutate(Replicate = rep(1:6, 6))%>%
