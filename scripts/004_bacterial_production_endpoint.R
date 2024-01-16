@@ -208,7 +208,88 @@ adjust_TE(counts_metadata_df = counts_metadata_TE)
 
 
 
-#2.2 Bacterial and viral abundance
+#2.2 NJ2020 Bacterial and viral abundance ####
+project_title<- "NJ2020_abundance"
+work_dir<- paste0(getwd(), "/results/004_bacterial_production_endpoint/", project_title, "/")
+source("scripts/004_bacterial_production_endpoint/1_importing_fcs_metadata_source.R")
+
+#Creates necessary directories
+set_up_vp_count()
+
+#Processes metadata file and ensures all required variables are present
+metadata_processing(paste0(getwd(),"/data/metadata/NJ2020_Abundance_Metadata.xlsx"), extension = ".xlsx", project_title = "Ba_vs_Vi")
+
+#Directory where raw FCS data is present
+source_directory <- paste0(getwd(), "/data/raw_fcs_data/")
+
+
+#Imports FCS files to working data directory
+import_matching_files(source_dir = source_directory, dest_dir = work_dir, metadata = metadata)
+
+#Adding gates
+{ #default
+  metadata = metadata
+  b_ssc = c(1.1, 2.0, 2.5, 3.2, 3.8, 3.8, 2.0, 0.6)
+  b_fl1 = c(1.9, 1.5, 1.5, 2.0, 2.8, 3.4, 3.2, 2.75)
+  v_ssc = c(-0.25, 1.2)
+  v_fl1 = c(-0.1, 1.7)
+  hna_ssc = c(0.6, 3.8)
+  hna_fl1 = c(2.15, 3.5)
+  lna_ssc = c(1.0, 3.8)
+  lna_fl1 = c(1.5,2.15)  
+  v1_ssc = c(-0.1, 0.90)
+  v1_fl1 = c(-0.1, 0.75)
+  v2_ssc = c(-0.1, 0.90)
+  v2_fl1 = c(0.75, 1.2)
+  v3_ssc = c(-0.1, 1.125)
+  v3_fl1 = c(1.2, 1.65)
+}
+
+
+#Populating gates
+rm(gate_df) #from previous step
+populate_gate_df()
+
+#Extracting plots
+#get_bv_plots()
+
+#These parameters didn't fit all, so some gate adjustments were made.
+
+#Samples 1:2 need-   HNA lower boundary lowered by 0.05
+#LNA upper boundary lowered by 0.05
+populate_gate_df(sample_range = c(1:2),
+                 g2_hna_fl1 = c(2.1, 3.5),
+                 g2_lna_fl1 = c(1.5,2.1)#from default
+)
+
+#Samples 13:16 need -all lower boundary raised by 0.1
+#LNA upper boundary raised by 0.15
+populate_gate_df(sample_range = c(13:16),
+                 adj_y_all_by = - 0.05#from default
+)
+#Extracting plots again after the adjustment
+get_bv_plots()
+
+
+
+#Extracting Stats
+get_bv_stats()
+
+
+#Import stats csv
+counts<- read.csv(paste0(work_dir, "results/", project_title, "_counts.csv"))
+str(counts)
+
+#Add metadata
+combine_metadata_counts(metadata_df = metadata, counts_df = counts)
+
+#Calculate TE (Control)
+calc_TE(df = counts_metadata)
+
+#Adjust counts with TE to get per mL values
+adjust_TE(counts_metadata_df = counts_metadata_TE)
+
+
 
 #3.0 Relative contact/collision rates ####
 
@@ -274,5 +355,45 @@ write.csv(cr_opt,
 library(devtools)
 
 #Install viral production calculator from Github
-install_github("mdhishamshaikh/ViralProduction_R")
+#install_github("mdhishamshaikh/ViralProduction_R")
 library(viralprod)
+
+
+
+#Import FCM count csv
+counts_per_mL<- read.csv("./results/004_bacterial_production_endpoint/NJ2020/results/NJ2020_per_mL.csv")
+str(counts_per_mL)
+counts_per_mL<- counts_per_mL %>%
+  dplyr::filter(counts_per_mL$Sample_Type != '0.22')
+#Importing NJ2020 abundance
+
+abundance<- read.csv(paste0("./results/004_bacterial_production_endpoint/NJ2020_abundance/results/NJ2020_abundance_per_mL.csv"))
+str(abundance)
+abundance <- abundance %>%
+  mutate(Station_Number = as.integer(Station_Number)) %>%
+  rename(Total_Bacteria = c_Bacteria,
+         Total_Viruses = c_Viruses)
+
+
+#Some checks
+vp_check_populations(counts_per_mL)
+vp_class_ori_abu(abundance) 
+
+
+class(abundance)
+class(vp_class_ori_abu(abundance))
+
+vp_class_count_data(counts_per_mL) #passed
+
+
+#Running viralprod
+
+vp_end_to_end(data = counts_per_mL,
+              original_abundances = abundance,
+              write_output = T,
+              output_dir = "./results/004_bacterial_production_endpoint/NJ2020/results/viralprod_results")
+
+#Step 3 visualize did not work
+
+
+                     
