@@ -48,14 +48,14 @@ for (loc in unique(cr_df$Location)){
       for (rep in unique(cr_df$Replicate)){
         
         df10<- cr_df %>%
-          filter(Location == loc,
+          dplyr::filter(Location == loc,
                  Expt_No == expt,
                  Sample_Type == type,
                  Replicate == rep)
         
         for(time in unique(cr_df$Timepoint)){
           
-          cr<-  (df10 %>% filter(Timepoint == time))$BV/(df10 %>% filter(Timepoint == 0))$BV
+          cr<-  (df10 %>% dplyr::filter(Timepoint == time))$BV/(df10 %>% dplyr::filter(Timepoint == 0))$BV
           print(cr)
           cr_value<- c(loc, expt, type, rep, time, cr)
           
@@ -75,13 +75,13 @@ cr_opt$rate <- as.numeric(cr_opt$rate)
 #Warnings are because of o.22 samples that have negative amount of bacteria. This could be due to TE corection.
 #We either get call the bacterial count as 0 and calculate for 0.22 or exclude it from further analyses.
 #For now, we'll exclude it.
-cr_opt <- cr_opt %>% filter(Sample_Type != '0.22')
+cr_opt <- cr_opt %>% dplyr::filter(Sample_Type != '0.22')
 
 
 #Let's visualise this data #####
 
 #First we summarise the replicates
-cr_opt<- cr_opt %>% filter(Timepoint != -3)
+cr_opt<- cr_opt %>% dplyr::filter(Timepoint != -3)
 
 cr_opt <- cr_opt %>% 
   group_by(Location, Expt_No, Sample_Type, Timepoint) %>%
