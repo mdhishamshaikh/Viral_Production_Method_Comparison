@@ -10,6 +10,7 @@
 *.svg
 *.pdf
 
-
-./data/raw_fcs_data/*
-./results/004_bacterial_production_endpoint/Ba_vs_Vi/data/raw_data/*
+/data/raw_fcs_data/*
+!/data/raw_fcs_data/.gitkeep
+/results/004_bacterial_production_endpoint/Ba_vs_Vi/data/raw_data/*
+!/results/004_bacterial_production_endpoint/Ba_vs_Vi/data/raw_data/.gitkeep
