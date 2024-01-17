@@ -333,7 +333,7 @@ for (loc in unique(cr_df$Location)){
   }
 }
 
-cr_opt<- data.table(data.table::transpose(as.data.table(cr_list)))
+cr_opt<- data.table::data.table(data.table::transpose(as.data.table(cr_list)))
 colnames(cr_opt)<- c("Location", "Station_Number", "Sample_Type","Replicate", "Timepoint",
                      "rate")
 
@@ -342,14 +342,40 @@ cr_opt$Timepoint <- as.numeric(cr_opt$Timepoint)
 
 #Calculating mean relative contact rates
 cr_opt <- cr_opt %>% 
-  group_by(Location, Station_Number, Sample_Type, Timepoint) %>%
-  summarise(rate_mean = mean(rate), rate_se = plotrix::std.error(rate)) %>%
-  drop_na()
+#   group_by(Location, Station_Number, Sample_Type, Timepoint) %>%
+#   summarise(rate_mean = mean(rate), rate_se = plotrix::std.error(rate)) %>%
+   drop_na()
 
 #Output .csv
 write.csv(cr_opt, 
           file = paste0(work_dir, "/results/", project_title, "_relative_contact_rates.csv"),
           row.names = F)
+
+#Descriptive statistics on collision rate
+cr_opt<- read.csv("./results/004_bacterial_production_endpoint/NJ2020/results/NJ2020_relative_contact_rates.csv")
+
+#extracting T24 values
+cr_opt_24<- cr_opt %>%
+  dplyr::filter(Timepoint == 24)
+
+ggplot(cr_opt_24,
+       aes(y = rate, x = Station_Number, col = Sample_Type))+
+  geom_point()+
+  geom_hline(yintercept = 1)
+
+cr_opt_24<- cr_opt_24 %>%
+  pivot_wider(names_from = Sample_Type, values_from = rate)
+summary(cr_opt_24)
+
+#VP
+mean(cr_opt_24$VP) #5.217303
+range(cr_opt_24$VP) # 0.9520749 16.9159087
+sd(cr_opt_24$VP) #5.174646
+
+#VPC
+mean(cr_opt_24$VPC) #0.8898042
+range(cr_opt_24$VPC) #0.2880539 1.6355745
+sd(cr_opt_24$VPC) #0.3673957
 
 #3.0 Viral production calculations for NJ2020 ####
 library(devtools)
@@ -395,5 +421,46 @@ vp_end_to_end(data = counts_per_mL,
 
 #Step 3 visualize did not work
 
+#VP BPE vs T24
 
-                     
+vp_bp <- read.csv("./results/004_bacterial_production_endpoint/NJ2020/results/viralprod_results/vp_results_BP.csv")
+vp_24 <- read.csv("./results/004_bacterial_production_endpoint/NJ2020/results/viralprod_results/vp_results_24.csv")
+
+#Adding an identifier to each dataframe, combining the two df, and extracting VIPCAL-SE (VPCL_AR_DIFF_SE)
+vp_bp <- vp_bp %>% mutate(Endpoint = 'BPE')
+vp_24 <- vp_24 %>% mutate(Endpoint = 'T24')
+
+vp_endpoint <- full_join(vp_bp, vp_24) %>%
+  dplyr::filter(VP_Method == 'VPCL_AR_DIFF_SE',
+                Sample_Type != "VPC")
+
+ggplot(vp_endpoint,
+       aes(x = Station_Number,
+           y = VP,
+           col = Endpoint,
+           shape = Population)) +
+  geom_point()
+
+vp_ep_wide<- vp_endpoint %>%
+  select(-c(abs_VP, VP_SE, VP_R_Squared, Time_Range)) %>%
+  pivot_wider(names_from = Endpoint,
+              values_from = VP)
+
+mean(vp_ep_wide$T24) 
+mean(vp_ep_wide$BPE)
+
+
+vp_ep_subset <- vp_endpoint %>%
+  dplyr::filter(Population == 'c_Viruses',
+                Station_Number != c(5,6)) %>%
+  mutate(Endpoint = as.factor(Endpoint))
+
+#Testing if BPE is less than T24 for lytic. Checking for overestimation.
+wilcox.test(data = vp_ep_subset %>% dplyr::filter(Sample_Type == 'VP'),
+            as.numeric(VP) ~ Endpoint,
+            alternative = 'less') 
+
+#Testing if BPE is greater than T24 for Lysogenic. Checking for underestimation.
+wilcox.test(data = vp_ep_subset %>% dplyr::filter(Sample_Type == 'Diff'),
+            as.numeric(VP) ~ Endpoint,
+            alternative = 'greater') 
