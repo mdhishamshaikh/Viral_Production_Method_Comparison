@@ -15,7 +15,7 @@ source("./scripts/viral_production_Step2.R")
 
 ####1.0 Creating a dataframe####
 # #Set number of dataframes you'd like to create
-simu_length<- 1000
+simu_length<- 10
 {
   
   

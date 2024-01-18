@@ -379,6 +379,7 @@ sd(cr_opt_24$VPC) #0.3673957
 
 #3.0 Viral production calculations for NJ2020 ####
 library(devtools)
+library(tidyverse)
 
 #Install viral production calculator from Github
 #install_github("mdhishamshaikh/ViralProduction_R")
@@ -397,7 +398,7 @@ abundance<- read.csv(paste0("./results/004_bacterial_production_endpoint/NJ2020_
 str(abundance)
 abundance <- abundance %>%
   mutate(Station_Number = as.integer(Station_Number)) %>%
-  rename(Total_Bacteria = c_Bacteria,
+  dplyr::rename(Total_Bacteria = c_Bacteria,
          Total_Viruses = c_Viruses)
 
 
