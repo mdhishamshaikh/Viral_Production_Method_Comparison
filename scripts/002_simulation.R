@@ -85,10 +85,14 @@ work_dir_simu<- paste0(getwd(), "/results/002_simulation/")
 
 library(viralprod)
 work_dir_simu<- paste0(getwd(), "/results/002_simulation/")
+
+#reading simulation csv
 simu_df<- read.csv(paste0(work_dir_simu, "simulation_dataframe/simulation_df.csv"))
 
 
-#need to provide an abundance file
+#need to provide an abundance file. Creating one where we assume abundance to be viral count
+#of treatment VP, replicate 1, at timepoint T1
+
 simu_abundance_df<- simu_df %>% dplyr::filter(Timepoint == 1,
                           Replicate ==1,
                           Sample_Type == "VP") %>%
@@ -97,28 +101,128 @@ simu_abundance_df<- simu_df %>% dplyr::filter(Timepoint == 1,
          Total_Viruses = c_Viruses) %>%
   select(Station_Number, Total_Bacteria, Total_Viruses)
 
+
+#Some checks before viralprod
+
 vp_check_populations(simu_df)
 vp_class_ori_abu(simu_abundance_df) 
-
-
 class(simu_abundance_df)
 class(vp_class_ori_abu(simu_abundance_df))
-
 vp_class_count_data(simu_df)
+#passed
 
-
+#Running viralprod.The third step fails. There is still an unresolved bug in the visualize step, that is no necessary for further analysis
 vp_end_to_end(data = simu_df,
               original_abundances = simu_abundance_df,
               #methods = c(1:3,7,10,12),
              #SR_calc = F,
             # BP_endpoint = F,
               write_output = T,
-              output_dir = "./results/002_simulation/simulation_viralprod_results_selected2")
+              output_dir = "./results/002_simulation/simulation_viralprod_results")
 
-# 
-# #3.0 Comparison between linear methods
-# 
-# simu_vp <- read.csv("./results/002_simulation/simulation_viralprod_results/vp_results_ALL.csv")
-# 
-# lm_vp<- simu_vp %>%
-#   dplyr::filter(VP_Method == c("LM_ALL"))
+
+
+#3.0 Comparison between methods ####
+
+simu_vp <- read.csv("./results/002_simulation/simulation_viralprod_results/vp_results_ALL.csv")
+unique(simu_vp$VP_Method)
+
+
+#Filtering total viruses, and excluding 'VPC' as it is both lytic and lysogenic.
+simu_vp <- simu_vp %>%
+  dplyr::filter(Population == "c_Viruses",
+                Sample_Type != "VPC") %>%
+  mutate(VP_Method = as.factor(VP_Method))
+
+
+#3.1 between linear methods ####
+
+#Selcting LM methods, and the entire time range (T1_T6)                
+lm_vp<- simu_vp %>%
+  dplyr::filter(VP_Method == c("LM_ALLPOINTS", "LM_SR_AVG", "LM_AR"),
+                Time_Range == "T1_T6")
+str(lm_vp)
+summary(lm_vp)
+unique(lm_vp$VP_Method)
+levels(lm_vp$VP_Method)
+
+#Kruskal Wallis
+
+ggpubr::ggboxplot(lm_vp, x = "VP_Method", y = "VP")
+
+kruskal.test(as.numeric(VP) ~ VP_Method, data = lm_vp) #chi-squared = 0.0072784, df = 2, p-value = 0.9964
+#no difference between the methods
+
+rstatix::kruskal_effsize(as.numeric(VP) ~ VP_Method, data = lm_vp) #effsize -0.000199
+#the difference is minuscule
+
+ggbetweenstats(lm_vp,
+               x = VP_Method,
+               y = VP,
+               type = "nonparametric",
+               pairwise.display = "ns")
+
+#3.2 between LM and VIPCAL 
+
+lm_vpcl_vp<- simu_vp %>%
+  dplyr::filter(VP_Method == c("LM_ALLPOINTS", "VPCL_AR_DIFF_SE"),
+                Time_Range == "T1_T6")
+#Kruskal Wallis
+
+ggpubr::ggboxplot(lm_vpcl_vp, x = "VP_Method", y = "VP")
+
+kruskal.test(as.numeric(VP) ~ VP_Method, data = lm_vpcl_vp) #chi-squared = 348.85, df = 1, p-value < 2.2e-16
+#SIGNIFICANT difference between the methods
+
+rstatix::kruskal_effsize(as.numeric(VP) ~ VP_Method, data = lm_vpcl_vp) #effsize 0.174 
+#the difference is LARGE
+
+ggbetweenstats(lm_vpcl_vp,
+               x = VP_Method,
+               y = VP,
+               type = "nonparametric",
+               pairwise.display = "ns")
+
+#3.2 between VIPCAL-SE methods VPCL_AR_DIFF_SE vs VPCL_AR_DIFF_LMER_SE
+
+vpse_vp<- simu_vp %>%
+  dplyr::filter(VP_Method == c("VPCL_AR_DIFF_SE", "VPCL_AR_DIFF_LMER_SE"),
+                Time_Range == "T1_T6")
+#Kruskal Wallis
+
+ggpubr::ggboxplot(vpse_vp, x = "VP_Method", y = "VP")
+
+kruskal.test(as.numeric(VP) ~ VP_Method, data = vpse_vp) #chi-squared = 0.053269, df = 1, p-value = 0.8175
+#no difference between the methods
+
+rstatix::kruskal_effsize(as.numeric(VP) ~ VP_Method, data = vpse_vp) #effsize -0.000474
+#the difference is minuscule
+
+ggbetweenstats(vpse_vp,
+               x = VP_Method,
+               y = VP,
+               type = "nonparametric",
+               pairwise.display = "ns")
+
+
+#3.3 between VIPCAL vs VIPCAL-SE methods VPCL_AR_DIFF vs VPCL_AR_DIFF_SE
+
+vpcl_vp<- simu_vp %>%
+  dplyr::filter(VP_Method == c("VPCL_AR_DIFF", "VPCL_AR_DIFF_SE"),
+                Time_Range == "T1_T6",
+                VP != 0)
+#Kruskal Wallis
+
+ggpubr::ggboxplot(vpcl_vp, x = "VP_Method", y = "VP")
+
+kruskal.test(as.numeric(VP) ~ VP_Method, data = vpcl_vp) #chi-squared = 329.94, df = 1, p-value < 2.2e-16
+#significant difference between the methods
+
+rstatix::kruskal_effsize(as.numeric(VP) ~ VP_Method, data = vpcl_vp) #effsize 0.224 
+#the difference is large
+
+ggbetweenstats(vpcl_vp,
+               x = VP_Method,
+               y = VP,
+               type = "nonparametric",
+               pairwise.display = "ns")
