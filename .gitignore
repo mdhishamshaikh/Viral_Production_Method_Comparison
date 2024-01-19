@@ -18,3 +18,4 @@
 !/results/004_bacterial_production_endpoint/NJ2020/data/raw_data/.gitkeep
 /results/004_bacterial_production_endpoint/NJ2020_abundance/data/raw_data/*
 !/results/004_bacterial_production_endpoint/NJ2020_abundance/data/raw_data/.gitkeep
+/results/002_simulation/simulation_viralprod_results/vp_results_ANALYZED.csv
